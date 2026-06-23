@@ -211,6 +211,31 @@ button {
   color: var(--primary-dark);
 }
 
+/* Pie para compartir / abrir en otro dispositivo (código QR) */
+.share-footer {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 2px dashed var(--chip);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.qr-img {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 6px;
+  box-shadow: var(--shadow-sm);
+}
+.share-caption {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-align: center;
+  max-width: 260px;
+}
+
 /* ---------- Pantalla de juego ---------- */
 .quiz-header {
   display: flex;

@@ -72,6 +72,19 @@ export class StartScreen {
       sectionBlock('¿Cuánto tiempo por pregunta?', timeChips),
       sectionBlock('Tamaño de la ronda', sizeChips),
       this.startBtn,
+      el('div', { class: 'share-footer' }, [
+        el('img', {
+          class: 'qr-img',
+          src: 'qr.svg',
+          alt: 'Código QR para abrir el juego',
+          width: '120',
+          height: '120',
+        }),
+        el('p', {
+          class: 'share-caption',
+          text: '📱 Escanéalo para jugar en celular o tablet',
+        }),
+      ]),
     ]);
 
     mount(root, container);
