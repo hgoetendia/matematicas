@@ -1,0 +1,9 @@
+# Dependencias (por si más adelante agregas un bundler)
+node_modules/
+
+# Artefactos de pruebas con navegador
+.playwright-mcp/
+
+# Sistema
+.DS_Store
+Thumbs.db
