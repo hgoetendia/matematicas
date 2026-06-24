@@ -3,6 +3,8 @@ import { getAllOperations } from '../../operations/registry.js';
 import { bestAccuracy } from '../../core/storage.js';
 
 const TIME_OPTIONS = [
+  { value: 1, label: '👑 GOD', sub: '1 s' },
+  { value: 3, label: '🔥 INSANO', sub: '3 s' },
   { value: 8, label: '⚡ Rápido', sub: '8 s' },
   { value: 12, label: '😊 Normal', sub: '12 s' },
   { value: 20, label: '🐢 Tranquilo', sub: '20 s' },
