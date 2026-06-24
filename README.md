@@ -1,9 +1,10 @@
 # 🧮 Matemágicas
 
-Aplicación web para reforzar operaciones matemáticas con preguntas de opción
-múltiple (9 opciones, rejilla 3×3) y cuenta regresiva. Incluye **sumas y restas
-de un dígito**, **tablas de multiplicar (0–12)** y **divisiones exactas**, y está
-pensada para crecer: agregar una operación nueva es crear un archivo y registrarlo.
+Aplicación web para reforzar operaciones matemáticas: se escribe la respuesta en
+un **teclado numérico** y hay cuenta regresiva por pregunta. Incluye **sumas y
+restas de un dígito**, **tablas de multiplicar (0–12)** y **divisiones exactas**,
+y está pensada para crecer: agregar una operación nueva es crear un archivo y
+registrarlo.
 
 ## Cómo ejecutarla
 
@@ -23,8 +24,10 @@ Luego abre `http://localhost:8000`.
 1. En **Inicio** eliges qué practicar (sumas, restas, multiplicaciones,
    divisiones), el tiempo por pregunta y el tamaño de la ronda (`Rápida` 20,
    `Media` 50 o `Completa`, que recorre **todas** las operaciones posibles).
-2. Cada pregunta muestra la operación y 9 opciones con una barra de tiempo.
-   Puedes tocar/clic o usar el **teclado (1–9)**.
+2. Cada pregunta muestra la operación y un **teclado numérico** (0–9, ⌫ y ↵)
+   con una barra de tiempo. Se puede usar el teclado físico (dígitos, Retroceso
+   y Enter). En **¿Cómo responder?** eliges entre **Con Enter** (confirmas tú) o
+   **Automático** (evalúa solo al completar los dígitos de la respuesta).
 3. Al terminar la ronda se muestran las **estadísticas**: precisión, aciertos,
    errores, tiempos agotados, mejor racha, tiempo medio, desglose por tipo y la
    lista de operaciones para repasar. Puedes **repasar solo las que fallaste**.

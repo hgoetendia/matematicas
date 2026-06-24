@@ -5,23 +5,30 @@ import { pick } from '../../core/utils.js';
 
 const PRAISE = ['¡Muy bien! 🎉', '¡Correcto! ⭐', '¡Excelente! 🚀', '¡Genial! 😃', '¡Eso es! 👏'];
 
+// Distribución tipo numpad: 7-8-9 / 4-5-6 / 1-2-3 / ⌫-0-↵
+const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
+
 /**
- * Pantalla del juego. Encapsula todo el ciclo de una ronda: muestra el ejercicio
- * y 9 opciones (rejilla 3x3), corre la cuenta regresiva, da retroalimentación y
- * avanza. Al terminar llama a onComplete(round).
+ * Pantalla del juego. El niño escribe la respuesta en un teclado numérico
+ * (numpad). Dos modos, según `config.requireEnter`:
+ *   - Con Enter:  escribe los dígitos y confirma con ↵ (puede borrar antes).
+ *   - Automático: en cuanto la cantidad de dígitos escritos iguala la de la
+ *                 respuesta, se evalúa solo (acierto o fallo).
  *
- * Soporta teclado: teclas 1-9 seleccionan la opción correspondiente.
+ * Soporta teclado físico: dígitos 0-9, Retroceso (borrar) y Enter (confirmar).
  */
 export class QuizScreen {
   constructor({ round, config, onComplete, onQuit }) {
     this.round = round;
     this.config = config;
+    this.requireEnter = config.requireEnter !== false; // por defecto, con Enter
     this.onComplete = onComplete;
     this.onQuit = onQuit;
     this.timer = null;
     this.locked = false; // true mientras se muestra la retroalimentación
-    this.currentOptions = [];
-    this.optionButtons = [];
+    this.input = ''; // dígitos escritos para la pregunta actual
+    this.answerLen = 1; // nº de dígitos de la respuesta correcta
+    this.maxLen = 3; // tope de dígitos que se pueden escribir
     this._keyHandler = (e) => this._onKey(e);
     this._questionStart = 0;
   }
@@ -40,7 +47,6 @@ export class QuizScreen {
         this.muteBtn.textContent = m ? '🔇' : '🔊';
       },
     });
-
     const header = el('div', { class: 'quiz-header' }, [
       el('button', { class: 'btn-ghost', text: '✕ Salir', onClick: () => this._quit() }),
       el('div', { class: 'quiz-header-center' }, [this.progressLabel, this.streakLabel]),
@@ -50,20 +56,29 @@ export class QuizScreen {
     this.progressBarFill = el('div', { class: 'progress-bar-fill' });
     const progressBar = el('div', { class: 'progress-bar' }, [this.progressBarFill]);
 
-    this.promptEl = el('div', { class: 'prompt' });
+    // Ecuación: "8 × 5 = [casilla con lo escrito]"
+    this.promptEl = el('span', { class: 'prompt' });
+    this.answerBox = el('span', { class: 'answer-box' });
+    this.equation = el('div', { class: 'equation' }, [
+      this.promptEl,
+      el('span', { class: 'equals', text: '=' }),
+      this.answerBox,
+    ]);
+
     this.timerFill = el('div', { class: 'timer-fill' });
     this.timerBar = el('div', { class: 'timer-bar' }, [this.timerFill]);
     this.timerNum = el('div', { class: 'timer-num' });
-    this.optionsGrid = el('div', { class: 'options-grid' });
+
+    this.keypad = this._buildKeypad();
     this.feedbackEl = el('div', { class: 'feedback' });
 
     this.container = el('section', { class: 'screen quiz-screen' }, [
       header,
       progressBar,
       el('div', { class: 'quiz-body' }, [
-        this.promptEl,
+        this.equation,
         el('div', { class: 'timer-wrap' }, [this.timerBar, this.timerNum]),
-        this.optionsGrid,
+        this.keypad,
         this.feedbackEl,
       ]),
     ]);
@@ -73,8 +88,22 @@ export class QuizScreen {
     this._renderQuestion();
   }
 
+  /** El teclado es estático, se construye una sola vez. */
+  _buildKeypad() {
+    const cells = DIGITS.map((d) => el('button', { class: 'key', text: d, onClick: () => this._append(d) }));
+    cells.push(el('button', { class: 'key delete', text: '⌫', title: 'Borrar', onClick: () => this._delete() }));
+    cells.push(
+      el('button', { class: `key ${this.requireEnter ? '' : 'wide'}`, text: '0', onClick: () => this._append('0') })
+    );
+    if (this.requireEnter) {
+      cells.push(el('button', { class: 'key enter', text: '↵', title: 'Aceptar', onClick: () => this._submit() }));
+    }
+    return el('div', { class: 'keypad' }, cells);
+  }
+
   _renderQuestion() {
     this.locked = false;
+    this.input = '';
     const ex = this.round.current;
     const number = this.round.index + 1;
 
@@ -83,30 +112,21 @@ export class QuizScreen {
     const streak = this.round.currentStreak();
     this.streakLabel.textContent = streak >= 2 ? `🔥 ${streak} seguidas` : '';
 
+    this.answerLen = String(ex.answer).length;
+    const maxAnswer = ex.meta && ex.meta.maxAnswer != null ? ex.meta.maxAnswer : 999;
+    this.maxLen = Math.max(this.answerLen, String(maxAnswer).length);
+
     this.promptEl.textContent = ex.prompt;
-    this.promptEl.classList.remove('pop');
-    void this.promptEl.offsetWidth; // reinicia la animación
-    this.promptEl.classList.add('pop');
+    this.answerBox.className = 'answer-box';
+    this._updateDisplay();
+    this.equation.classList.remove('pop');
+    void this.equation.offsetWidth; // reinicia la animación
+    this.equation.classList.add('pop');
 
     this.feedbackEl.textContent = '';
     this.feedbackEl.className = 'feedback';
 
-    // Opciones (rejilla 3x3). El número de tecla se muestra en una esquina.
-    this.currentOptions = this.round.optionsFor(ex);
-    this.optionButtons = this.currentOptions.map((value, i) => {
-      const btn = el(
-        'button',
-        { class: 'option-btn', onClick: () => this._select(value) },
-        [
-          el('span', { class: 'option-key', text: String(i + 1) }),
-          el('span', { class: 'option-value', text: String(value) }),
-        ]
-      );
-      return btn;
-    });
-    this.optionsGrid.replaceChildren(...this.optionButtons);
-
-    // Cuenta regresiva. Se reinicia la barra al 100% sin animación.
+    // Cuenta regresiva: barra reiniciada al 100% sin animación.
     this.timerFill.style.transition = 'none';
     this.timerFill.style.width = '100%';
     this.timerFill.classList.remove('low');
@@ -122,38 +142,44 @@ export class QuizScreen {
     this.timer.start();
   }
 
-  _updateTimer(remaining, duration) {
-    const pct = Math.max(0, (remaining / duration) * 100);
-    this.timerFill.style.width = `${pct}%`;
-    this.timerNum.textContent = String(Math.ceil(remaining));
-    this.timerFill.classList.toggle('low', remaining <= duration * 0.3);
+  _updateDisplay() {
+    this.answerBox.textContent = this.input;
   }
 
-  _onKey(e) {
+  _append(digit) {
     if (this.locked) return;
-    const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= this.currentOptions.length) {
-      this._select(this.currentOptions[n - 1]);
+    if (this.input.length >= this.maxLen) return;
+    this.input += digit;
+    this._updateDisplay();
+    sound.tick();
+    // Modo automático: evalúa al completar los dígitos de la respuesta.
+    if (!this.requireEnter && this.input.length >= this.answerLen) {
+      this._submit();
     }
   }
 
-  _select(value) {
+  _delete() {
     if (this.locked) return;
+    this.input = this.input.slice(0, -1);
+    this._updateDisplay();
+  }
+
+  _submit() {
+    if (this.locked || this.input === '') return;
     this.locked = true;
     this.timer.stop();
     const timeTaken = (Date.now() - this._questionStart) / 1000;
     const ex = this.round.current;
+    const value = Number(this.input);
     const correct = value === ex.answer;
 
-    this.optionButtons.forEach((btn, i) => {
-      btn.disabled = true;
-      const v = this.currentOptions[i];
-      if (v === ex.answer) btn.classList.add('correct');
-      if (v === value && !correct) btn.classList.add('wrong');
-    });
-
-    if (correct) sound.correct();
-    else sound.wrong();
+    this.answerBox.classList.add(correct ? 'correct' : 'wrong');
+    if (correct) {
+      sound.correct();
+      this._burst();
+    } else {
+      sound.wrong();
+    }
 
     this._showFeedback(correct ? 'correct' : 'wrong', ex);
     this.round.record({ selected: value, timedOut: false, timeTaken });
@@ -164,16 +190,36 @@ export class QuizScreen {
     if (this.locked) return;
     this.locked = true;
     const ex = this.round.current;
-
-    this.optionButtons.forEach((btn, i) => {
-      btn.disabled = true;
-      if (this.currentOptions[i] === ex.answer) btn.classList.add('correct');
-    });
+    this.input = String(ex.answer); // revela la respuesta correcta
+    this._updateDisplay();
+    this.answerBox.classList.add('reveal');
 
     sound.timeout();
     this._showFeedback('timeout', ex);
     this.round.record({ selected: null, timedOut: true, timeTaken: this.config.timePerQuestion });
     this._scheduleNext();
+  }
+
+  /** Chispas de "hechizo" alrededor de la casilla al acertar (elemento firma). */
+  _burst() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const box = this.answerBox;
+    const cx = box.offsetLeft + box.offsetWidth / 2;
+    const cy = box.offsetTop + box.offsetHeight / 2;
+    const glyphs = ['✨', '⭐', '🌟', '💫'];
+    const N = 12;
+    for (let i = 0; i < N; i++) {
+      const s = el('span', { class: 'spark', text: glyphs[i % glyphs.length] });
+      const angle = (Math.PI * 2 * i) / N + Math.random() * 0.5;
+      const dist = 45 + Math.random() * 45;
+      s.style.left = `${cx}px`;
+      s.style.top = `${cy}px`;
+      s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+      s.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+      s.style.setProperty('--r', `${(Math.random() * 360) | 0}deg`);
+      this.equation.appendChild(s);
+      setTimeout(() => s.remove(), 720);
+    }
   }
 
   _showFeedback(type, ex) {
@@ -185,6 +231,25 @@ export class QuizScreen {
           : `¡Se acabó el tiempo! Era ${ex.answer} ⏰`;
     this.feedbackEl.textContent = text;
     this.feedbackEl.className = `feedback show ${type}`;
+  }
+
+  _updateTimer(remaining, duration) {
+    const pct = Math.max(0, (remaining / duration) * 100);
+    this.timerFill.style.width = `${pct}%`;
+    this.timerNum.textContent = String(Math.ceil(remaining));
+    this.timerFill.classList.toggle('low', remaining <= duration * 0.3);
+  }
+
+  _onKey(e) {
+    if (this.locked) return;
+    if (e.key >= '0' && e.key <= '9') {
+      this._append(e.key);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      this._delete();
+    } else if (e.key === 'Enter') {
+      if (this.requireEnter) this._submit();
+    }
   }
 
   _scheduleNext() {

@@ -16,6 +16,11 @@ const SIZE_OPTIONS = [
   { value: null, label: 'Completa', sub: 'todas las operaciones' },
 ];
 
+const ENTER_OPTIONS = [
+  { value: true, label: '⏎ Con Enter', sub: 'confirmas tú' },
+  { value: false, label: '⚡ Automático', sub: 'revisa al instante' },
+];
+
 /**
  * Pantalla de inicio: elegir operaciones, tiempo y tamaño de ronda.
  * Las operaciones se listan automáticamente desde el registro, así que cuando
@@ -28,6 +33,7 @@ export class StartScreen {
     this.selectedOps = new Set(config.enabledOperations);
     this.time = config.timePerQuestion;
     this.size = config.roundSize;
+    this.requireEnter = config.requireEnter !== false;
   }
 
   mount(root) {
@@ -56,22 +62,27 @@ export class StartScreen {
     const sizeChips = this._radioGroup(SIZE_OPTIONS, this.size, (v) => {
       this.size = v;
     });
+    const enterChips = this._radioGroup(ENTER_OPTIONS, this.requireEnter, (v) => {
+      this.requireEnter = v;
+    });
 
     this.startBtn = el('button', {
       class: 'btn-primary big',
       text: '¡Empezar! 🚀',
       onClick: () => this._start(),
     });
+    this.startBtn.disabled = this.selectedOps.size === 0;
 
     const container = el('section', { class: 'screen start-screen' }, [
       el('div', { class: 'hero' }, [
-        el('div', { class: 'hero-emoji', text: '🧮' }),
+        el('div', { class: 'hero-emoji', text: '🪄' }),
         el('h1', { class: 'app-title', text: 'Matemágicas' }),
         el('p', { class: 'app-subtitle', text: 'Suma, resta, multiplica y divide' }),
       ]),
       best > 0 ? el('div', { class: 'best-badge', text: `🏆 Tu mejor marca: ${best}%` }) : null,
       sectionBlock('¿Qué quieres practicar?', opChips),
       sectionBlock('¿Cuánto tiempo por pregunta?', timeChips),
+      sectionBlock('¿Cómo responder?', enterChips),
       sectionBlock('Tamaño de la ronda', sizeChips),
       this.startBtn,
       el('div', { class: 'share-footer' }, [
@@ -130,6 +141,7 @@ export class StartScreen {
       enabledOperations: Array.from(this.selectedOps),
       timePerQuestion: this.time,
       roundSize: this.size,
+      requireEnter: this.requireEnter,
     });
   }
 }

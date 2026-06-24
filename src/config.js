@@ -5,8 +5,9 @@
 export const defaultConfig = {
   optionsCount: 9, // opciones por pregunta (incluye la correcta) -> rejilla 3x3
   timePerQuestion: 12, // segundos de cuenta regresiva por pregunta
-  enabledOperations: ['suma-1d', 'resta-1d', 'multi-12', 'division-12'], // operaciones activas por defecto
-  roundSize: null, // null = cubrir TODAS las operaciones; o un número para acotar
+  enabledOperations: [], // ninguna preseleccionada: el niño elige qué practicar
+  roundSize: null, // null = cubrir TODAS las operaciones (Completa); o un número para acotar
+  requireEnter: false, // teclado: false = auto al completar dígitos; true = confirmar con Enter
   feedbackDelayMs: 950, // pausa para mostrar el resultado antes de la siguiente
   shuffleRound: true, // barajar el orden de los ejercicios
 

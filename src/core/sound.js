@@ -51,6 +51,9 @@ export const sound = {
   timeout() {
     tone(150, 0.3, 'square', 0, 0.04);
   },
+  tick() {
+    tone(880, 0.04, 'sine', 0, 0.03);
+  },
   finish() {
     [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'sine', i * 0.12));
   },
